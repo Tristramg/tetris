@@ -1,0 +1,2 @@
+struct Piece;
+struct Bloc;
