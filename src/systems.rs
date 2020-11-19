@@ -143,7 +143,7 @@ pub fn game_over(
     query: Query<Without<Active, (&BlocPosition, &GlobalTransform)>>,
 ) {
     for (_block, transform) in query.iter() {
-        if transform.translation.y() > constants::HEIGHT / 2.0 * constants::STEP {
+        if transform.translation.y() > constants::HEIGHT as f32 / 2.0 * constants::STEP {
             score.game_over = true;
         }
     }

@@ -14,8 +14,8 @@ fn setup(
     let wall_material = materials.add(Color::rgb(0.8, 0.8, 0.8).into());
     let wall_thickness = 10.0;
     let bounds = Vec2::new(
-        constants::STEP * constants::WIDTH,
-        constants::STEP * constants::HEIGHT,
+        constants::STEP * constants::WIDTH as f32,
+        constants::STEP * constants::HEIGHT as f32,
     );
     commands
         // left
