@@ -1,4 +1,3 @@
-mod collision;
 mod components;
 mod constants;
 mod resources;
@@ -22,7 +21,7 @@ fn setup(
         .spawn(SpriteComponents {
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
-                (-bounds.x() - wall_thickness) / 2.0,
+                (bounds.x() + wall_thickness) / -2.0,
                 0.0,
                 0.0,
             )),
@@ -47,7 +46,7 @@ fn setup(
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
                 0.0,
-                (-bounds.y() - wall_thickness) / 2.0,
+                (bounds.y() + wall_thickness) / -2.0,
                 0.0,
             )),
             sprite: Sprite::new(Vec2::new(bounds.x() + wall_thickness, wall_thickness)),
@@ -91,7 +90,10 @@ impl Plugin for InitPlugin {
             .add_system(systems::drop.system())
             .add_system(systems::collision.system())
             .add_system(systems::spawn.system())
-            .add_system(systems::game_over.system());
+            .add_system(systems::game_over.system())
+            .add_system(systems::movement_to_pixels.system())
+            .add_system(systems::block_grid_position.system())
+            .add_system(systems::bottom_blocked.system());
     }
 }
 

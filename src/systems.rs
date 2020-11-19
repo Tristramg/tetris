@@ -1,4 +1,3 @@
-use crate::collision;
 use crate::components::*;
 use crate::constants;
 use crate::resources;
@@ -42,47 +41,64 @@ pub fn input(
 pub fn input_movement(
     time: Res<Time>,
     mut timer: ResMut<resources::ControlTimer>,
-    mut query: Query<With<Active, (&Piece, &mut Transform, &mut Blocked, &mut Movement)>>,
+    mut query: Query<With<Active, (&Piece, &mut Blocked, &mut Movement, &mut GridPos)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (_piece, mut transform, mut blocked, mut movement) in query.iter_mut() {
-            let translation = &mut transform.translation;
+        for (_piece, mut blocked, mut movement, mut grid_pos) in query.iter_mut() {
             match *movement {
-                Movement::Left => *translation.x_mut() -= constants::STEP,
-                Movement::Right => *translation.x_mut() += constants::STEP,
-                Movement::Down => *translation.y_mut() -= constants::STEP,
+                Movement::Left => grid_pos.x -= 1,
+                Movement::Right => grid_pos.x += 1,
+                Movement::Down => grid_pos.y += 1,
                 _ => (),
             }
 
             *movement = Movement::None;
             blocked.left = false;
             blocked.right = false;
+            blocked.bottom = false;
         }
     }
 }
 
+pub fn movement_to_pixels(mut query: Query<With<Piece, (&mut Transform, &GridPos)>>) {
+    let x_origin = constants::WIDTH as f32 * constants::STEP / -2.0;
+    let y_origin = constants::HEIGHT as f32 * constants::STEP / 2.0;
+    for (mut transform, grid_pos) in query.iter_mut() {
+        let translation = &mut transform.translation;
+        *translation.x_mut() = grid_pos.x_pixels(constants::STEP, x_origin);
+        *translation.y_mut() = grid_pos.y_pixels(constants::STEP, y_origin);
+    }
+}
+
+fn collides_left(a: &GridPos, b: &GridPos) -> bool {
+    a.y == b.y && a.x + 1 == b.x
+}
+
+fn collides_right(a: &GridPos, b: &GridPos) -> bool {
+    a.y == b.y && a.x == b.x + 1
+}
+
+fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
+    a.x == b.x && a.y == b.y + 1
+}
+
 pub fn collision(
-    mut commands: Commands,
-    bloc: Query<With<Active, (&BlocPosition, &GlobalTransform, &Sprite)>>,
-    other: Query<Without<Active, (&Collider, &GlobalTransform, &Sprite)>>,
-    active: Query<With<Active, (Entity,)>>,
+    bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
+    other: Query<Without<Active, (&Collider, &GridPos)>>,
     mut blocked: Query<(&Piece, &mut Blocked)>,
 ) {
-    for (_bloc, transform, sprite) in bloc.iter() {
-        let bounds = collision::Bounds::from_pos_size(transform.translation, sprite.size);
-        for (_other, other_transform, other_sprite) in other.iter() {
-            let other_bounds =
-                collision::Bounds::from_pos_size(other_transform.translation, other_sprite.size);
-            for (_global, mut b) in blocked.iter_mut() {
-                b.left = b.left || bounds.left(&other_bounds);
-                b.right = b.right || bounds.right(&other_bounds);
-            }
-            if bounds.bottom(&other_bounds) {
-                for (entity,) in active.iter() {
-                    commands.remove_one::<Active>(entity);
-                }
+    for (_global, mut b) in blocked.iter_mut() {
+        for (_bloc, grid_pos) in bloc.iter() {
+            b.left = b.left || grid_pos.x == 0;
+            b.right = b.right || grid_pos.x == constants::WIDTH - 1;
+            b.bottom = b.bottom || grid_pos.y == constants::HEIGHT;
+
+            for (_other, other_grid_pos) in other.iter() {
+                b.left = b.left || collides_left(other_grid_pos, grid_pos);
+                b.right = b.right || collides_right(other_grid_pos, grid_pos);
+                b.bottom = b.bottom || collides_bottom(other_grid_pos, grid_pos);
             }
         }
     }
@@ -107,8 +123,10 @@ pub fn spawn(
             .with(Blocked {
                 left: false,
                 right: false,
+                bottom: false,
             })
             .with(Movement::None)
+            .with(GridPos { x: 4, y: 0 })
             .with_children(|parent| {
                 for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
                     let x = constants::STEP * pos.0 as f32;
@@ -121,9 +139,12 @@ pub fn spawn(
                             ..Default::default()
                         })
                         .with(BlocPosition(idx))
+                        .with(GridPos {
+                            x: 4 + pos.0,
+                            y: pos.1,
+                        })
                         .with(Active)
-                        .with(Collider)
-                        .with(GridPos { x: pos.0, y: pos.1 });
+                        .with(Collider);
                 }
             });
     }
@@ -163,5 +184,31 @@ pub fn scoreboard(scoreboard: Res<resources::Scoreboard>, mut query: Query<&mut 
         } else {
             text.value = format!("Score: {}", scoreboard.score);
         };
+    }
+}
+
+pub fn block_grid_position(
+    mut query: Query<With<Piece, (&Children, &GridPos, &Rotation)>>,
+    mut q: Query<(&BlocPosition, &mut GridPos)>,
+) {
+    for (children, parent_grid_pos, rotation) in query.iter_mut() {
+        for child in children.iter() {
+            if let Ok((position, mut grid_pos)) = q.get_mut(*child) {
+                let pos = constants::T.orientations[rotation.0].0[position.0];
+                grid_pos.x = parent_grid_pos.x + pos.0;
+                grid_pos.y = parent_grid_pos.y + pos.1;
+            }
+        }
+    }
+}
+
+pub fn bottom_blocked(mut commands: Commands, pieces: Query<(Entity, &Children, &Blocked)>) {
+    for (entity, children, blocked) in pieces.iter() {
+        if blocked.bottom {
+            commands.remove_one::<Active>(entity);
+            for child in children.iter() {
+                commands.remove_one::<Active>(*child);
+            }
+        }
     }
 }
