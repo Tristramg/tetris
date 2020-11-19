@@ -7,32 +7,33 @@ use bevy::prelude::*;
 pub fn drop(
     time: Res<Time>,
     mut timer: ResMut<resources::SpeedTimer>,
-    mut query: Query<With<Active, (&Piece, &mut Velocity)>>,
+    mut query: Query<With<Active, (&Piece, &mut Movement)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (_piece, mut velocity) in query.iter_mut() {
-            velocity.0.set_y(-constants::STEP);
+        for (_piece, mut movement) in query.iter_mut() {
+            *movement = Movement::Down;
         }
     }
 }
 
 pub fn input(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<With<Active, (&Piece, &mut Rotation, &mut Velocity, &Blocked)>>,
+    mut query: Query<With<Active, (&Piece, &mut Rotation, &mut Movement, &Blocked)>>,
 ) {
-    for (_piece, mut rotation, mut velocity, blocked) in query.iter_mut() {
+    for (_piece, mut rotation, mut movement, blocked) in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::Left) && !blocked.left {
-            velocity.0.set_x(-constants::STEP);
+            *movement = Movement::Left;
         }
         if keyboard_input.pressed(KeyCode::Right) && !blocked.right {
-            velocity.0.set_x(constants::STEP);
+            *movement = Movement::Right;
         }
         if keyboard_input.pressed(KeyCode::Down) {
-            velocity.0.set_y(-constants::STEP);
+            *movement = Movement::Down;
         }
         if keyboard_input.just_pressed(KeyCode::Up) {
+            *movement = Movement::Rotation;
             rotation.0 = (rotation.0 + 1) % 4;
         }
     }
@@ -41,16 +42,21 @@ pub fn input(
 pub fn input_movement(
     time: Res<Time>,
     mut timer: ResMut<resources::ControlTimer>,
-    mut query: Query<With<Active, (&Piece, &mut Velocity, &mut Transform, &mut Blocked)>>,
+    mut query: Query<With<Active, (&Piece, &mut Transform, &mut Blocked, &mut Movement)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (_piece, mut velocity, mut transform, mut blocked) in query.iter_mut() {
+        for (_piece, mut transform, mut blocked, mut movement) in query.iter_mut() {
             let translation = &mut transform.translation;
-            *translation.x_mut() += velocity.0.x();
-            *translation.y_mut() += velocity.0.y();
-            velocity.0 = Vec2::zero();
+            match *movement {
+                Movement::Left => *translation.x_mut() -= constants::STEP,
+                Movement::Right => *translation.x_mut() += constants::STEP,
+                Movement::Down => *translation.y_mut() -= constants::STEP,
+                _ => (),
+            }
+
+            *movement = Movement::None;
             blocked.left = false;
             blocked.right = false;
         }
@@ -91,18 +97,18 @@ pub fn spawn(
         commands
             .spawn((Piece,))
             .with(Transform::from_translation(Vec3::new(
-                0.0,
-                constants::STEP * 10.0,
+                constants::STEP / 2.0,
+                constants::STEP * constants::HEIGHT as f32 / 2.0 - constants::STEP / 2.0,
                 0.0,
             )))
             .with(GlobalTransform::default())
             .with(Active)
             .with(Rotation(0))
-            .with(Velocity(Vec2::zero()))
             .with(Blocked {
                 left: false,
                 right: false,
             })
+            .with(Movement::None)
             .with_children(|parent| {
                 for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
                     let x = constants::STEP * pos.0 as f32;
@@ -116,7 +122,8 @@ pub fn spawn(
                         })
                         .with(BlocPosition(idx))
                         .with(Active)
-                        .with(Collider);
+                        .with(Collider)
+                        .with(GridPos { x: pos.0, y: pos.1 });
                 }
             });
     }
