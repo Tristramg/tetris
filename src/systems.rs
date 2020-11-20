@@ -6,12 +6,12 @@ use bevy::prelude::*;
 pub fn drop(
     time: Res<Time>,
     mut timer: ResMut<resources::SpeedTimer>,
-    mut query: Query<With<Active, (&Piece, &mut Movement)>>,
+    mut query: Query<With<Piece, (&mut Movement,)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (_piece, mut movement) in query.iter_mut() {
+        for (mut movement,) in query.iter_mut() {
             *movement = Movement::Down;
         }
     }
@@ -19,9 +19,9 @@ pub fn drop(
 
 pub fn input(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<With<Active, (&Piece, &mut Rotation, &mut Movement, &Blocked)>>,
+    mut query: Query<With<Piece, (&mut Rotation, &mut Movement, &Blocked)>>,
 ) {
-    for (_piece, mut rotation, mut movement, blocked) in query.iter_mut() {
+    for (mut rotation, mut movement, blocked) in query.iter_mut() {
         if keyboard_input.pressed(KeyCode::Left) && !blocked.left {
             *movement = Movement::Left;
         }
@@ -41,12 +41,12 @@ pub fn input(
 pub fn input_movement(
     time: Res<Time>,
     mut timer: ResMut<resources::ControlTimer>,
-    mut query: Query<With<Active, (&Piece, &mut Blocked, &mut Movement, &mut GridPos)>>,
+    mut query: Query<With<Piece, (&mut Blocked, &mut Movement, &mut GridPos)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (_piece, mut blocked, mut movement, mut grid_pos) in query.iter_mut() {
+        for (mut blocked, mut movement, mut grid_pos) in query.iter_mut() {
             match *movement {
                 Movement::Left => grid_pos.x -= 1,
                 Movement::Right => grid_pos.x += 1,
@@ -108,9 +108,9 @@ pub fn spawn(
     mut commands: Commands,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    active: Query<With<Active, (Entity,)>>,
+    piece: Query<(&Piece,)>,
 ) {
-    if active.iter().next() == None {
+    if piece.iter().next().is_none() {
         let grid_pos = GridPos { x: 4, y: 0 };
         commands
             .spawn((Piece,))
@@ -118,7 +118,6 @@ pub fn spawn(
                 grid.as_translation(grid_pos.x, grid_pos.y),
             ))
             .with(GlobalTransform::default())
-            .with(Active)
             .with(Rotation(0))
             .with(Blocked {
                 left: false,
@@ -152,7 +151,7 @@ pub fn spawn(
 
 pub fn rotation(
     grid: Res<resources::Grid>,
-    mut query: Query<With<Active, (&Children, &Rotation)>>,
+    mut query: Query<With<Piece, (&Children, &Rotation)>>,
     mut q: Query<(&BlocPosition, &mut Transform)>,
 ) {
     for (children, rotation) in query.iter_mut() {
@@ -204,10 +203,10 @@ pub fn block_grid_position(
 pub fn bottom_blocked(mut commands: Commands, pieces: Query<(Entity, &Children, &Blocked)>) {
     for (entity, children, blocked) in pieces.iter() {
         if blocked.bottom {
-            commands.remove_one::<Active>(entity);
             for child in children.iter() {
                 commands.remove_one::<Active>(*child);
             }
+            commands.despawn(entity);
         }
     }
 }
