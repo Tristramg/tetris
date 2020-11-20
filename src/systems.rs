@@ -93,7 +93,7 @@ pub fn collision(
         for (_bloc, grid_pos) in bloc.iter() {
             b.left = b.left || grid_pos.x == 0;
             b.right = b.right || grid_pos.x == grid.width - 1;
-            b.bottom = b.bottom || grid_pos.y == grid.height;
+            b.bottom = b.bottom || grid_pos.y == grid.height - 1;
 
             for (_other, other_grid_pos) in other.iter() {
                 b.left = b.left || collides_left(other_grid_pos, grid_pos);
@@ -157,7 +157,7 @@ pub fn rotation(
             if let Ok((position, mut transform)) = q.get_mut(*child) {
                 let pos = constants::T.orientations[rotation.0].0[position.0];
                 let x = grid.unit * pos.0 as f32;
-                let y = grid.unit * pos.1 as f32;
+                let y = -grid.unit * pos.1 as f32;
                 *transform = Transform::from_translation(Vec3::new(x, y, 0.0));
             }
         }
@@ -184,10 +184,10 @@ pub fn scoreboard(scoreboard: Res<resources::Scoreboard>, mut query: Query<&mut 
 }
 
 pub fn block_grid_position(
-    mut query: Query<With<Piece, (&Children, &GridPos, &Rotation)>>,
+    query: Query<With<Piece, (&Children, &GridPos, &Rotation)>>,
     mut q: Query<(&BlocPosition, &mut GridPos)>,
 ) {
-    for (children, parent_grid_pos, rotation) in query.iter_mut() {
+    for (children, parent_grid_pos, rotation) in query.iter() {
         for child in children.iter() {
             if let Ok((position, mut grid_pos)) = q.get_mut(*child) {
                 let pos = constants::T.orientations[rotation.0].0[position.0];
