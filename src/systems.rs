@@ -113,18 +113,16 @@ pub fn spawn(
     if piece.iter().next().is_none() {
         let grid_pos = GridPos { x: 4, y: 0 };
         commands
-            .spawn((Piece,))
+            .spawn((Piece, Rotation(0), Movement::None))
             .with(Transform::from_translation(
                 grid.as_translation(grid_pos.x, grid_pos.y),
             ))
             .with(GlobalTransform::default())
-            .with(Rotation(0))
             .with(Blocked {
                 left: false,
                 right: false,
                 bottom: false,
             })
-            .with(Movement::None)
             .with(grid_pos)
             .with_children(|parent| {
                 for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
