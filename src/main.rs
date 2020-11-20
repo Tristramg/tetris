@@ -6,26 +6,24 @@ use bevy::prelude::*;
 
 fn setup(
     mut commands: Commands,
+    grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
     // Add walls
     let wall_material = materials.add(Color::rgb(0.8, 0.8, 0.8).into());
     let wall_thickness = 10.0;
-    let bounds = Vec2::new(
-        constants::STEP * constants::WIDTH as f32,
-        constants::STEP * constants::HEIGHT as f32,
-    );
+
     commands
         // left
         .spawn(SpriteComponents {
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
-                (bounds.x() + wall_thickness) / -2.0,
+                grid.x_min() - wall_thickness * 0.5,
                 0.0,
                 0.0,
             )),
-            sprite: Sprite::new(Vec2::new(wall_thickness, bounds.y() + wall_thickness)),
+            sprite: Sprite::new(Vec2::new(wall_thickness, grid.height() + wall_thickness)),
             ..Default::default()
         })
         .with(components::Collider)
@@ -33,11 +31,11 @@ fn setup(
         .spawn(SpriteComponents {
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
-                (bounds.x() + wall_thickness) / 2.0,
+                grid.x_max() + wall_thickness * 0.5,
                 0.0,
                 0.0,
             )),
-            sprite: Sprite::new(Vec2::new(wall_thickness, bounds.y() + wall_thickness)),
+            sprite: Sprite::new(Vec2::new(wall_thickness, grid.height() + wall_thickness)),
             ..Default::default()
         })
         .with(components::Collider)
@@ -46,10 +44,13 @@ fn setup(
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
                 0.0,
-                (bounds.y() + wall_thickness) / -2.0,
+                grid.y_max() - wall_thickness * 0.5,
                 0.0,
             )),
-            sprite: Sprite::new(Vec2::new(bounds.x() + wall_thickness, wall_thickness)),
+            sprite: Sprite::new(Vec2::new(
+                grid.width() + 2.0 * wall_thickness,
+                wall_thickness,
+            )),
             ..Default::default()
         })
         .with(components::Collider);
@@ -114,6 +115,11 @@ fn main() {
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))
         .add_resource(resources::SpeedTimer(Timer::from_seconds(0.80, true)))
+        .add_resource(resources::Grid {
+            height: 20,
+            width: 10,
+            unit: 50.0,
+        })
         .add_plugins(DefaultPlugins)
         .add_plugin(InitPlugin)
         .run();

@@ -1,7 +1,3 @@
-pub const STEP: f32 = 50.0;
-pub const WIDTH: isize = 10;
-pub const HEIGHT: isize = 20;
-
 pub struct SquarePositions(pub [(isize, isize); 4]);
 pub struct Tetromino {
     pub orientations: [SquarePositions; 4],

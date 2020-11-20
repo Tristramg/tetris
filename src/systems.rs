@@ -62,13 +62,12 @@ pub fn input_movement(
     }
 }
 
-pub fn movement_to_pixels(mut query: Query<With<Piece, (&mut Transform, &GridPos)>>) {
-    let x_origin = constants::WIDTH as f32 * constants::STEP / -2.0;
-    let y_origin = constants::HEIGHT as f32 * constants::STEP / 2.0;
+pub fn movement_to_pixels(
+    grid: Res<resources::Grid>,
+    mut query: Query<With<Piece, (&mut Transform, &GridPos)>>,
+) {
     for (mut transform, grid_pos) in query.iter_mut() {
-        let translation = &mut transform.translation;
-        *translation.x_mut() = grid_pos.x_pixels(constants::STEP, x_origin);
-        *translation.y_mut() = grid_pos.y_pixels(constants::STEP, y_origin);
+        transform.translation = grid.as_translation(grid_pos.x, grid_pos.y);
     }
 }
 
@@ -85,6 +84,7 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
 }
 
 pub fn collision(
+    grid: Res<resources::Grid>,
     bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
     other: Query<Without<Active, (&Collider, &GridPos)>>,
     mut blocked: Query<(&Piece, &mut Blocked)>,
@@ -92,8 +92,8 @@ pub fn collision(
     for (_global, mut b) in blocked.iter_mut() {
         for (_bloc, grid_pos) in bloc.iter() {
             b.left = b.left || grid_pos.x == 0;
-            b.right = b.right || grid_pos.x == constants::WIDTH - 1;
-            b.bottom = b.bottom || grid_pos.y == constants::HEIGHT;
+            b.right = b.right || grid_pos.x == grid.width - 1;
+            b.bottom = b.bottom || grid_pos.y == grid.height;
 
             for (_other, other_grid_pos) in other.iter() {
                 b.left = b.left || collides_left(other_grid_pos, grid_pos);
@@ -106,17 +106,17 @@ pub fn collision(
 
 pub fn spawn(
     mut commands: Commands,
+    grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     active: Query<With<Active, (Entity,)>>,
 ) {
     if active.iter().next() == None {
+        let grid_pos = GridPos { x: 4, y: 0 };
         commands
             .spawn((Piece,))
-            .with(Transform::from_translation(Vec3::new(
-                constants::STEP / 2.0,
-                constants::STEP * constants::HEIGHT as f32 / 2.0 - constants::STEP / 2.0,
-                0.0,
-            )))
+            .with(Transform::from_translation(
+                grid.as_translation(grid_pos.x, grid_pos.y),
+            ))
             .with(GlobalTransform::default())
             .with(Active)
             .with(Rotation(0))
@@ -126,15 +126,15 @@ pub fn spawn(
                 bottom: false,
             })
             .with(Movement::None)
-            .with(GridPos { x: 4, y: 0 })
+            .with(grid_pos)
             .with_children(|parent| {
                 for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
-                    let x = constants::STEP * pos.0 as f32;
-                    let y = constants::STEP * pos.1 as f32;
+                    let x = grid.unit * pos.0 as f32;
+                    let y = grid.unit * pos.1 as f32;
                     parent
                         .spawn(SpriteComponents {
                             material: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
-                            sprite: Sprite::new(Vec2::new(constants::STEP, constants::STEP)),
+                            sprite: Sprite::new(Vec2::new(grid.unit, grid.unit)),
                             transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
                             ..Default::default()
                         })
@@ -151,6 +151,7 @@ pub fn spawn(
 }
 
 pub fn rotation(
+    grid: Res<resources::Grid>,
     mut query: Query<With<Active, (&Children, &Rotation)>>,
     mut q: Query<(&BlocPosition, &mut Transform)>,
 ) {
@@ -158,8 +159,8 @@ pub fn rotation(
         for child in children.iter() {
             if let Ok((position, mut transform)) = q.get_mut(*child) {
                 let pos = constants::T.orientations[rotation.0].0[position.0];
-                let x = constants::STEP * pos.0 as f32;
-                let y = constants::STEP * pos.1 as f32;
+                let x = grid.unit * pos.0 as f32;
+                let y = grid.unit * pos.1 as f32;
                 *transform = Transform::from_translation(Vec3::new(x, y, 0.0));
             }
         }
@@ -168,12 +169,10 @@ pub fn rotation(
 
 pub fn game_over(
     mut score: ResMut<resources::Scoreboard>,
-    query: Query<Without<Active, (&BlocPosition, &GlobalTransform)>>,
+    query: Query<Without<Active, (&BlocPosition, &GridPos)>>,
 ) {
-    for (_block, transform) in query.iter() {
-        if transform.translation.y() > constants::HEIGHT as f32 / 2.0 * constants::STEP {
-            score.game_over = true;
-        }
+    for _ in query.iter().filter(|(_, grid_pos)| grid_pos.y <= 0) {
+        score.game_over = true;
     }
 }
 
