@@ -64,4 +64,5 @@ pub struct Status {
     pub rotation: usize,
     pub x: isize,
     pub y: isize,
+    pub piece: crate::constants::Tetromino,
 }

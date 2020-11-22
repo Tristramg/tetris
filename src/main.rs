@@ -120,6 +120,7 @@ fn main() {
             rotation: 0,
             x: 4,
             y: 0,
+            piece: constants::rand_tetromino(),
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))

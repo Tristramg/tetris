@@ -105,7 +105,8 @@ pub fn spawn(
         status.x = 4;
         status.y = 0;
         status.blocked_bottom = false;
-        for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
+        status.piece = constants::rand_tetromino();
+        for (idx, pos) in status.piece.orientations[0].0.iter().enumerate() {
             let grid_pos = GridPos {
                 x: status.x + pos.0,
                 y: status.y + pos.1,
@@ -132,7 +133,7 @@ pub fn bloc_global_position(
     mut query: Query<With<Active, (&BlocPosition, &mut GridPos)>>,
 ) {
     for (position, mut grid_pos) in query.iter_mut() {
-        let pos = constants::T.orientations[status.rotation].0[position.0];
+        let pos = status.piece.orientations[status.rotation].0[position.0];
         grid_pos.x = status.x + pos.0;
         grid_pos.y = status.y + pos.1;
     }
