@@ -87,14 +87,14 @@ impl Plugin for InitPlugin {
             .add_system(systems::scoreboard.system())
             .add_system(systems::input.system())
             .add_system(systems::input_movement.system())
-            .add_system(systems::rotation.system())
+            .add_system(systems::bloc_global_position.system())
             .add_system(systems::drop.system())
             .add_system(systems::collision.system())
             .add_system(systems::spawn.system())
             .add_system(systems::game_over.system())
             .add_system(systems::movement_to_pixels.system())
-            .add_system(systems::block_grid_position.system())
-            .add_system(systems::bottom_blocked.system());
+            .add_system(systems::bottom_blocked.system())
+            .add_system(systems::completed_line.system());
     }
 }
 
@@ -111,6 +111,15 @@ fn main() {
         .add_resource(resources::Scoreboard {
             score: 0,
             game_over: false,
+        })
+        .add_resource(resources::Status {
+            blocked_left: false,
+            blocked_right: false,
+            blocked_bottom: false,
+            next_movement: resources::Movement::None,
+            rotation: 0,
+            x: 4,
+            y: 0,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))

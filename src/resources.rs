@@ -46,3 +46,22 @@ impl Grid {
         )
     }
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Movement {
+    None,
+    Left,
+    Right,
+    Rotation,
+    Down,
+}
+
+pub struct Status {
+    pub blocked_left: bool,
+    pub blocked_right: bool,
+    pub blocked_bottom: bool,
+    pub next_movement: Movement,
+    pub rotation: usize,
+    pub x: isize,
+    pub y: isize,
+}

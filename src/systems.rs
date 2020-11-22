@@ -6,65 +6,56 @@ use bevy::prelude::*;
 pub fn drop(
     time: Res<Time>,
     mut timer: ResMut<resources::SpeedTimer>,
-    mut query: Query<With<Piece, (&mut Movement,)>>,
+    mut status: ResMut<resources::Status>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (mut movement,) in query.iter_mut() {
-            *movement = Movement::Down;
-        }
+        status.next_movement = resources::Movement::Down;
     }
 }
 
-pub fn input(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<With<Piece, (&mut Rotation, &mut Movement, &Blocked)>>,
-) {
-    for (mut rotation, mut movement, blocked) in query.iter_mut() {
-        if keyboard_input.pressed(KeyCode::Left) && !blocked.left {
-            *movement = Movement::Left;
-        }
-        if keyboard_input.pressed(KeyCode::Right) && !blocked.right {
-            *movement = Movement::Right;
-        }
-        if keyboard_input.pressed(KeyCode::Down) {
-            *movement = Movement::Down;
-        }
-        if keyboard_input.just_pressed(KeyCode::Up) {
-            *movement = Movement::Rotation;
-            rotation.0 = (rotation.0 + 1) % 4;
-        }
+pub fn input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<KeyCode>>) {
+    if keyboard_input.pressed(KeyCode::Left) && !status.blocked_left {
+        status.next_movement = resources::Movement::Left;
+    }
+    if keyboard_input.pressed(KeyCode::Right) && !status.blocked_right {
+        status.next_movement = resources::Movement::Right;
+    }
+    if keyboard_input.pressed(KeyCode::Down) && !status.blocked_bottom {
+        status.next_movement = resources::Movement::Down;
+    }
+    if keyboard_input.just_pressed(KeyCode::Up) {
+        status.next_movement = resources::Movement::Rotation;
     }
 }
 
 pub fn input_movement(
     time: Res<Time>,
+    mut status: ResMut<resources::Status>,
     mut timer: ResMut<resources::ControlTimer>,
-    mut query: Query<With<Piece, (&mut Blocked, &mut Movement, &mut GridPos)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        for (mut blocked, mut movement, mut grid_pos) in query.iter_mut() {
-            match *movement {
-                Movement::Left => grid_pos.x -= 1,
-                Movement::Right => grid_pos.x += 1,
-                Movement::Down => grid_pos.y += 1,
-                _ => (),
-            }
-
-            *movement = Movement::None;
-            blocked.left = false;
-            blocked.right = false;
-            blocked.bottom = false;
+        match status.next_movement {
+            resources::Movement::Left => status.x -= 1,
+            resources::Movement::Right => status.x += 1,
+            resources::Movement::Down => status.y += 1,
+            resources::Movement::Rotation => status.rotation = (status.rotation + 1) % 4,
+            _ => (),
         }
+
+        status.next_movement = resources::Movement::None;
+        status.blocked_left = false;
+        status.blocked_right = false;
+        status.blocked_bottom = false;
     }
 }
 
 pub fn movement_to_pixels(
     grid: Res<resources::Grid>,
-    mut query: Query<With<Piece, (&mut Transform, &GridPos)>>,
+    mut query: Query<(&mut Transform, &GridPos)>,
 ) {
     for (mut transform, grid_pos) in query.iter_mut() {
         transform.translation = grid.as_translation(grid_pos.x, grid_pos.y);
@@ -85,82 +76,65 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
 
 pub fn collision(
     grid: Res<resources::Grid>,
+    mut status: ResMut<resources::Status>,
     bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
     other: Query<Without<Active, (&Collider, &GridPos)>>,
-    mut blocked: Query<(&Piece, &mut Blocked)>,
 ) {
-    for (_global, mut b) in blocked.iter_mut() {
-        for (_bloc, grid_pos) in bloc.iter() {
-            b.left = b.left || grid_pos.x == 0;
-            b.right = b.right || grid_pos.x == grid.width - 1;
-            b.bottom = b.bottom || grid_pos.y == grid.height - 1;
+    for (_bloc, grid_pos) in bloc.iter() {
+        status.blocked_left = status.blocked_left || grid_pos.x == 0;
+        status.blocked_right = status.blocked_right || grid_pos.x == grid.width - 1;
+        status.blocked_bottom = status.blocked_bottom || grid_pos.y == grid.height - 1;
 
-            for (_other, other_grid_pos) in other.iter() {
-                b.left = b.left || collides_left(other_grid_pos, grid_pos);
-                b.right = b.right || collides_right(other_grid_pos, grid_pos);
-                b.bottom = b.bottom || collides_bottom(other_grid_pos, grid_pos);
-            }
+        for (_other, other_grid_pos) in other.iter() {
+            status.blocked_left = status.blocked_left || collides_left(other_grid_pos, grid_pos);
+            status.blocked_right = status.blocked_right || collides_right(other_grid_pos, grid_pos);
+            status.blocked_bottom =
+                status.blocked_bottom || collides_bottom(other_grid_pos, grid_pos);
         }
     }
 }
 
 pub fn spawn(
     mut commands: Commands,
+    mut status: ResMut<resources::Status>,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    piece: Query<(&Piece,)>,
+    active: Query<(&Active,)>,
 ) {
-    if piece.iter().next().is_none() {
-        let grid_pos = GridPos { x: 4, y: 0 };
-        commands
-            .spawn((Piece, Rotation(0), Movement::None))
-            .with(Transform::from_translation(
-                grid.as_translation(grid_pos.x, grid_pos.y),
-            ))
-            .with(GlobalTransform::default())
-            .with(Blocked {
-                left: false,
-                right: false,
-                bottom: false,
-            })
-            .with(grid_pos)
-            .with_children(|parent| {
-                for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
-                    let x = grid.unit * pos.0 as f32;
-                    let y = grid.unit * pos.1 as f32;
-                    parent
-                        .spawn(SpriteComponents {
-                            material: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
-                            sprite: Sprite::new(Vec2::new(grid.unit, grid.unit)),
-                            transform: Transform::from_translation(Vec3::new(x, y, 0.0)),
-                            ..Default::default()
-                        })
-                        .with(BlocPosition(idx))
-                        .with(GridPos {
-                            x: 4 + pos.0,
-                            y: pos.1,
-                        })
-                        .with(Active)
-                        .with(Collider);
-                }
-            });
+    if active.iter().next().is_none() {
+        status.x = 4;
+        status.y = 0;
+        status.blocked_bottom = false;
+        for (idx, pos) in constants::T.orientations[0].0.iter().enumerate() {
+            let grid_pos = GridPos {
+                x: status.x + pos.0,
+                y: status.y + pos.1,
+            };
+            commands
+                .spawn(SpriteComponents {
+                    material: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
+                    sprite: Sprite::new(Vec2::new(grid.unit, grid.unit)),
+                    transform: Transform::from_translation(
+                        grid.as_translation(grid_pos.x, grid_pos.y),
+                    ),
+                    ..Default::default()
+                })
+                .with(BlocPosition(idx))
+                .with(grid_pos)
+                .with(Active)
+                .with(Collider);
+        }
     }
 }
 
-pub fn rotation(
-    grid: Res<resources::Grid>,
-    mut query: Query<With<Piece, (&Children, &Rotation)>>,
-    mut q: Query<(&BlocPosition, &mut Transform)>,
+pub fn bloc_global_position(
+    status: Res<resources::Status>,
+    mut query: Query<With<Active, (&BlocPosition, &mut GridPos)>>,
 ) {
-    for (children, rotation) in query.iter_mut() {
-        for child in children.iter() {
-            if let Ok((position, mut transform)) = q.get_mut(*child) {
-                let pos = constants::T.orientations[rotation.0].0[position.0];
-                let x = grid.unit * pos.0 as f32;
-                let y = -grid.unit * pos.1 as f32;
-                *transform = Transform::from_translation(Vec3::new(x, y, 0.0));
-            }
-        }
+    for (position, mut grid_pos) in query.iter_mut() {
+        let pos = constants::T.orientations[status.rotation].0[position.0];
+        grid_pos.x = status.x + pos.0;
+        grid_pos.y = status.y + pos.1;
     }
 }
 
@@ -183,28 +157,41 @@ pub fn scoreboard(scoreboard: Res<resources::Scoreboard>, mut query: Query<&mut 
     }
 }
 
-pub fn block_grid_position(
-    query: Query<With<Piece, (&Children, &GridPos, &Rotation)>>,
-    mut q: Query<(&BlocPosition, &mut GridPos)>,
+pub fn bottom_blocked(
+    mut commands: Commands,
+    status: Res<resources::Status>,
+    pieces: Query<With<Active, (Entity,)>>,
 ) {
-    for (children, parent_grid_pos, rotation) in query.iter() {
-        for child in children.iter() {
-            if let Ok((position, mut grid_pos)) = q.get_mut(*child) {
-                let pos = constants::T.orientations[rotation.0].0[position.0];
-                grid_pos.x = parent_grid_pos.x + pos.0;
-                grid_pos.y = parent_grid_pos.y + pos.1;
-            }
+    if status.blocked_bottom {
+        for (entity,) in pieces.iter() {
+            commands.remove_one::<Active>(entity);
         }
     }
 }
 
-pub fn bottom_blocked(mut commands: Commands, pieces: Query<(Entity, &Children, &Blocked)>) {
-    for (entity, children, blocked) in pieces.iter() {
-        if blocked.bottom {
-            for child in children.iter() {
-                commands.remove_one::<Active>(*child);
-            }
+pub fn completed_line(
+    mut commands: Commands,
+    grid: Res<resources::Grid>,
+    mut blocks: Query<With<BlocPosition, (Entity, &mut GridPos)>>,
+) {
+    let counts = blocks
+        .iter_mut()
+        .map(|(_, grid_pos)| grid_pos.y)
+        .fold(std::collections::HashMap::new(), |mut acc, y| {
+            *acc.entry(y).or_insert(0) += 1;
+            acc
+        })
+        .iter()
+        .filter(|(_line, count)| *count == &grid.width)
+        .map(|(line, _count)| *line)
+        .collect::<Vec<_>>();
+
+    for line in counts {
+        for (entity, _) in blocks.iter_mut().filter(|(_, pos)| (*pos).y == line) {
             commands.despawn(entity);
+        }
+        for (_, mut pos) in blocks.iter_mut().filter(|(_, pos)| (*pos).y < line) {
+            pos.y += 1;
         }
     }
 }
