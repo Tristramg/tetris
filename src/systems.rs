@@ -114,7 +114,7 @@ pub fn spawn(
             commands
                 .spawn(SpriteComponents {
                     material: materials.add(status.piece.color.into()),
-                    sprite: Sprite::new(Vec2::new(grid.unit, grid.unit)),
+                    sprite: Sprite::new(Vec2::new(grid.unit - 1.0, grid.unit - 1.0)),
                     transform: Transform::from_translation(
                         grid.as_translation(grid_pos.x, grid_pos.y),
                     ),
