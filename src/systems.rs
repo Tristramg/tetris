@@ -101,7 +101,7 @@ pub fn spawn(
     mut materials: ResMut<Assets<ColorMaterial>>,
     active: Query<(&Active,)>,
 ) {
-    if active.iter().next().is_none() {
+    if active.iter().next().is_none() && !status.game_over {
         status.x = 4;
         status.y = 0;
         status.blocked_bottom = false;
@@ -140,20 +140,20 @@ pub fn bloc_global_position(
 }
 
 pub fn game_over(
-    mut score: ResMut<resources::Scoreboard>,
+    mut status: ResMut<resources::Status>,
     query: Query<Without<Active, (&BlocPosition, &GridPos)>>,
 ) {
     for _ in query.iter().filter(|(_, grid_pos)| grid_pos.y <= 0) {
-        score.game_over = true;
+        status.game_over = true;
     }
 }
 
-pub fn scoreboard(scoreboard: Res<resources::Scoreboard>, mut query: Query<&mut Text>) {
+pub fn scoreboard(status: Res<resources::Status>, mut query: Query<&mut Text>) {
     for mut text in query.iter_mut() {
-        if scoreboard.game_over {
-            text.value = format!("Score: {}. Game Over", scoreboard.score);
+        if status.game_over {
+            text.value = format!("Score: {}. Game Over", status.score);
         } else {
-            text.value = format!("Score: {}", scoreboard.score);
+            text.value = format!("Score: {}", status.score);
         };
     }
 }
@@ -173,26 +173,29 @@ pub fn bottom_blocked(
 pub fn completed_line(
     mut commands: Commands,
     grid: Res<resources::Grid>,
+    status: Res<resources::Status>,
     mut blocks: Query<With<BlocPosition, (Entity, &mut GridPos)>>,
 ) {
-    let counts = blocks
-        .iter_mut()
-        .map(|(_, grid_pos)| grid_pos.y)
-        .fold(std::collections::HashMap::new(), |mut acc, y| {
-            *acc.entry(y).or_insert(0) += 1;
-            acc
-        })
-        .iter()
-        .filter(|(_line, count)| *count == &grid.width)
-        .map(|(line, _count)| *line)
-        .collect::<Vec<_>>();
+    if status.blocked_bottom {
+        let counts = blocks
+            .iter_mut()
+            .map(|(_, grid_pos)| grid_pos.y)
+            .fold(std::collections::HashMap::new(), |mut acc, y| {
+                *acc.entry(y).or_insert(0) += 1;
+                acc
+            })
+            .iter()
+            .filter(|(_line, count)| *count == &grid.width)
+            .map(|(line, _count)| *line)
+            .collect::<Vec<_>>();
 
-    for line in counts {
-        for (entity, _) in blocks.iter_mut().filter(|(_, pos)| (*pos).y == line) {
-            commands.despawn(entity);
-        }
-        for (_, mut pos) in blocks.iter_mut().filter(|(_, pos)| (*pos).y < line) {
-            pos.y += 1;
+        for line in counts {
+            for (entity, _) in blocks.iter_mut().filter(|(_, pos)| (*pos).y == line) {
+                commands.despawn(entity);
+            }
+            for (_, mut pos) in blocks.iter_mut().filter(|(_, pos)| (*pos).y < line) {
+                pos.y += 1;
+            }
         }
     }
 }

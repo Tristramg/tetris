@@ -108,10 +108,6 @@ fn main() {
             resizable: false,
             ..Default::default()
         })
-        .add_resource(resources::Scoreboard {
-            score: 0,
-            game_over: false,
-        })
         .add_resource(resources::Status {
             blocked_left: false,
             blocked_right: false,
@@ -121,6 +117,8 @@ fn main() {
             x: 4,
             y: 0,
             piece: constants::rand_tetromino(),
+            score: 0,
+            game_over: false,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))
