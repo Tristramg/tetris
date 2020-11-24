@@ -113,7 +113,7 @@ pub fn spawn(
             };
             commands
                 .spawn(SpriteComponents {
-                    material: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
+                    material: materials.add(status.piece.color.into()),
                     sprite: Sprite::new(Vec2::new(grid.unit, grid.unit)),
                     transform: Transform::from_translation(
                         grid.as_translation(grid_pos.x, grid_pos.y),
