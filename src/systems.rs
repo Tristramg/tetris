@@ -109,6 +109,7 @@ pub fn spawn_new_piece(
         piece.x = 4;
         piece.y = 0;
         piece.piece = constants::rand_tetromino();
+        piece.rotation = 0;
         status.blocked_bottom = false;
         for (idx, pos) in piece.piece.orientations[0].0.iter().enumerate() {
             let grid_pos = GridPos {
