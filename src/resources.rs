@@ -63,4 +63,6 @@ pub struct Status {
     pub piece: crate::constants::Tetromino,
     pub score: usize,
     pub game_over: bool,
+    pub level: usize,
+    pub lines: usize,
 }

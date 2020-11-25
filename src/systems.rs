@@ -143,18 +143,20 @@ pub fn game_over(
     mut status: ResMut<resources::Status>,
     query: Query<Without<Active, (&BlocPosition, &GridPos)>>,
 ) {
-    for _ in query.iter().filter(|(_, grid_pos)| grid_pos.y <= 0) {
+    if query.iter().any(|(_, grid_pos)| grid_pos.y <= 0) {
         status.game_over = true;
     }
 }
 
 pub fn scoreboard(status: Res<resources::Status>, mut query: Query<&mut Text>) {
     for mut text in query.iter_mut() {
-        if status.game_over {
-            text.value = format!("Score: {}. Game Over", status.score);
-        } else {
-            text.value = format!("Score: {}", status.score);
-        };
+        text.value = format!(
+            "Score: {}\nLevel: {}\nLines: {}{}",
+            status.score,
+            status.level,
+            status.lines,
+            if status.game_over { "\n Game Over" } else { "" }
+        );
     }
 }
 

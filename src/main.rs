@@ -119,6 +119,8 @@ fn main() {
             piece: constants::rand_tetromino(),
             score: 0,
             game_over: false,
+            level: 1,
+            lines: 0,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))
