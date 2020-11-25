@@ -87,8 +87,8 @@ impl Plugin for InitPlugin {
             .add_system(systems::test_collisions.system())
             .add_system(systems::read_input.system())
             .add_system(systems::drop.system())
-            .add_system(systems::apply_movement.system())
             .add_system(systems::bloc_global_position.system())
+            .add_system(systems::apply_movement.system())
             .add_system(systems::completed_line.system())
             .add_system(systems::game_over.system())
             .add_system(systems::remove_piece.system())
@@ -112,15 +112,17 @@ fn main() {
             blocked_left: false,
             blocked_right: false,
             blocked_bottom: false,
-            next_movement: resources::Movement::None,
-            rotation: 0,
-            x: 4,
-            y: 0,
-            piece: constants::rand_tetromino(),
+            next_movements: std::collections::HashSet::new(),
             score: 0,
             game_over: false,
             level: 1,
             lines: 0,
+        })
+        .add_resource(resources::Piece {
+            rotation: 0,
+            x: 4,
+            y: 0,
+            piece: constants::rand_tetromino(),
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))

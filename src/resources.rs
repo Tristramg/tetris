@@ -43,9 +43,8 @@ impl Grid {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Movement {
-    None,
     Left,
     Right,
     Rotation,
@@ -56,13 +55,16 @@ pub struct Status {
     pub blocked_left: bool,
     pub blocked_right: bool,
     pub blocked_bottom: bool,
-    pub next_movement: Movement,
-    pub rotation: usize,
-    pub x: isize,
-    pub y: isize,
-    pub piece: crate::constants::Tetromino,
+    pub next_movements: std::collections::HashSet<Movement>,
     pub score: usize,
     pub game_over: bool,
     pub level: usize,
     pub lines: usize,
+}
+
+pub struct Piece {
+    pub rotation: usize,
+    pub x: isize,
+    pub y: isize,
+    pub piece: crate::constants::Tetromino,
 }

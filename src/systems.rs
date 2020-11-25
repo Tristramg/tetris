@@ -11,42 +11,45 @@ pub fn drop(
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        status.next_movement = resources::Movement::Down;
+        status.next_movements.insert(resources::Movement::Down);
     }
 }
 
 pub fn read_input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<KeyCode>>) {
     if keyboard_input.pressed(KeyCode::Left) && !status.blocked_left {
-        status.next_movement = resources::Movement::Left;
+        status.next_movements.insert(resources::Movement::Left);
     }
     if keyboard_input.pressed(KeyCode::Right) && !status.blocked_right {
-        status.next_movement = resources::Movement::Right;
+        status.next_movements.insert(resources::Movement::Right);
     }
     if keyboard_input.pressed(KeyCode::Down) && !status.blocked_bottom {
-        status.next_movement = resources::Movement::Down;
+        status.next_movements.insert(resources::Movement::Down);
     }
     if keyboard_input.just_pressed(KeyCode::Up) {
-        status.next_movement = resources::Movement::Rotation;
+        status.next_movements.insert(resources::Movement::Rotation);
     }
 }
 
 pub fn apply_movement(
     time: Res<Time>,
     mut status: ResMut<resources::Status>,
+    mut piece: ResMut<resources::Piece>,
     mut timer: ResMut<resources::ControlTimer>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
-        match status.next_movement {
-            resources::Movement::Left => status.x -= 1,
-            resources::Movement::Right => status.x += 1,
-            resources::Movement::Down => status.y += 1,
-            resources::Movement::Rotation => status.rotation = (status.rotation + 1) % 4,
-            _ => (),
+        for movement in status.next_movements.drain() {
+            match movement {
+                resources::Movement::Left => piece.x -= 1,
+                resources::Movement::Right => piece.x += 1,
+                resources::Movement::Down => piece.y += 1,
+                resources::Movement::Rotation => {
+                    piece.rotation = (piece.rotation + 1) % 4;
+                }
+            }
         }
 
-        status.next_movement = resources::Movement::None;
         status.blocked_left = false;
         status.blocked_right = false;
         status.blocked_bottom = false;
@@ -97,23 +100,24 @@ pub fn test_collisions(
 pub fn spawn_new_piece(
     mut commands: Commands,
     mut status: ResMut<resources::Status>,
+    mut piece: ResMut<resources::Piece>,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     active: Query<(&Active,)>,
 ) {
     if active.iter().next().is_none() && !status.game_over {
-        status.x = 4;
-        status.y = 0;
+        piece.x = 4;
+        piece.y = 0;
+        piece.piece = constants::rand_tetromino();
         status.blocked_bottom = false;
-        status.piece = constants::rand_tetromino();
-        for (idx, pos) in status.piece.orientations[0].0.iter().enumerate() {
+        for (idx, pos) in piece.piece.orientations[0].0.iter().enumerate() {
             let grid_pos = GridPos {
-                x: status.x + pos.0,
-                y: status.y + pos.1,
+                x: piece.x + pos.0,
+                y: piece.y + pos.1,
             };
             commands
                 .spawn(SpriteComponents {
-                    material: materials.add(status.piece.color.into()),
+                    material: materials.add(piece.piece.color.into()),
                     sprite: Sprite::new(Vec2::new(grid.unit - 1.0, grid.unit - 1.0)),
                     transform: Transform::from_translation(
                         grid.as_translation(grid_pos.x, grid_pos.y),
@@ -129,13 +133,13 @@ pub fn spawn_new_piece(
 }
 
 pub fn bloc_global_position(
-    status: Res<resources::Status>,
+    piece: Res<resources::Piece>,
     mut query: Query<With<Active, (&BlocPosition, &mut GridPos)>>,
 ) {
     for (position, mut grid_pos) in query.iter_mut() {
-        let pos = status.piece.orientations[status.rotation].0[position.0];
-        grid_pos.x = status.x + pos.0;
-        grid_pos.y = status.y + pos.1;
+        let pos = piece.piece.orientations[piece.rotation].0[position.0];
+        grid_pos.x = piece.x + pos.0;
+        grid_pos.y = piece.y + pos.1;
     }
 }
 
