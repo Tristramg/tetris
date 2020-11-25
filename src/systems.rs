@@ -15,7 +15,7 @@ pub fn drop(
     }
 }
 
-pub fn input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<KeyCode>>) {
+pub fn read_input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<KeyCode>>) {
     if keyboard_input.pressed(KeyCode::Left) && !status.blocked_left {
         status.next_movement = resources::Movement::Left;
     }
@@ -30,7 +30,7 @@ pub fn input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<Ke
     }
 }
 
-pub fn input_movement(
+pub fn apply_movement(
     time: Res<Time>,
     mut status: ResMut<resources::Status>,
     mut timer: ResMut<resources::ControlTimer>,
@@ -74,7 +74,7 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
     a.x == b.x && a.y == b.y + 1
 }
 
-pub fn collision(
+pub fn test_collisions(
     grid: Res<resources::Grid>,
     mut status: ResMut<resources::Status>,
     bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
@@ -94,7 +94,7 @@ pub fn collision(
     }
 }
 
-pub fn spawn(
+pub fn spawn_new_piece(
     mut commands: Commands,
     mut status: ResMut<resources::Status>,
     grid: Res<resources::Grid>,
@@ -160,7 +160,7 @@ pub fn scoreboard(status: Res<resources::Status>, mut query: Query<&mut Text>) {
     }
 }
 
-pub fn bottom_blocked(
+pub fn remove_piece(
     mut commands: Commands,
     status: Res<resources::Status>,
     pieces: Query<With<Active, (Entity,)>>,

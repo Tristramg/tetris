@@ -84,17 +84,17 @@ pub struct InitPlugin;
 impl Plugin for InitPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system(setup.system())
-            .add_system(systems::scoreboard.system())
-            .add_system(systems::input.system())
-            .add_system(systems::input_movement.system())
-            .add_system(systems::bloc_global_position.system())
+            .add_system(systems::test_collisions.system())
+            .add_system(systems::read_input.system())
             .add_system(systems::drop.system())
-            .add_system(systems::collision.system())
-            .add_system(systems::spawn.system())
+            .add_system(systems::apply_movement.system())
+            .add_system(systems::bloc_global_position.system())
+            .add_system(systems::completed_line.system())
             .add_system(systems::game_over.system())
+            .add_system(systems::remove_piece.system())
+            .add_system(systems::spawn_new_piece.system())
             .add_system(systems::movement_to_pixels.system())
-            .add_system(systems::bottom_blocked.system())
-            .add_system(systems::completed_line.system());
+            .add_system(systems::scoreboard.system());
     }
 }
 
