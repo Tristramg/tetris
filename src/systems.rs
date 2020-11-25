@@ -172,10 +172,21 @@ pub fn bottom_blocked(
     }
 }
 
+fn score(lines: usize, level: usize) -> usize {
+    level
+        * match lines {
+            1 => 100,
+            2 => 250,
+            3 => 500,
+            4 => 1000,
+            _ => 0,
+        }
+}
+
 pub fn completed_line(
     mut commands: Commands,
     grid: Res<resources::Grid>,
-    status: Res<resources::Status>,
+    mut status: ResMut<resources::Status>,
     mut blocks: Query<With<BlocPosition, (Entity, &mut GridPos)>>,
 ) {
     if status.blocked_bottom {
@@ -190,6 +201,9 @@ pub fn completed_line(
             .filter(|(_line, count)| *count == &grid.width)
             .map(|(line, _count)| *line)
             .collect::<Vec<_>>();
+        status.lines += counts.len();
+        status.score += score(counts.len(), status.level);
+        status.level = status.level.max(1 + status.lines / 10);
 
         for line in counts {
             for (entity, _) in blocks.iter_mut().filter(|(_, pos)| (*pos).y == line) {
