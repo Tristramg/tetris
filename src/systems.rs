@@ -96,10 +96,10 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
 pub fn test_collisions(
     grid: Res<resources::Grid>,
     mut piece: ResMut<resources::Piece>,
-    bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
+    bloc: Query<With<Active, (&GridPos,)>>,
     other: Query<Without<Active, (&GridPos,)>>,
 ) {
-    for (_bloc, grid_pos) in bloc.iter() {
+    for (grid_pos,) in bloc.iter() {
         piece.blocked_left = piece.blocked_left || grid_pos.x == 0;
         piece.blocked_right = piece.blocked_right || grid_pos.x == grid.width - 1;
         piece.blocked_bottom = piece.blocked_bottom || grid_pos.y == grid.height - 1;
@@ -161,9 +161,9 @@ pub fn bloc_global_position(
 
 pub fn game_over(
     mut status: ResMut<resources::Status>,
-    query: Query<Without<Active, (&BlocPosition, &GridPos)>>,
+    query: Query<Without<Active, (&GridPos,)>>,
 ) {
-    if query.iter().any(|(_, grid_pos)| grid_pos.y <= 0) {
+    if query.iter().any(|(grid_pos,)| grid_pos.y <= 0) {
         status.game_over = true;
     }
 }
