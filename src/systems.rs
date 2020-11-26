@@ -28,6 +28,9 @@ pub fn read_input(mut status: ResMut<resources::Status>, keyboard_input: Res<Inp
     if keyboard_input.just_pressed(KeyCode::Up) {
         status.next_movements.insert(resources::Movement::Rotation);
     }
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        status.next_movements.insert(resources::Movement::Drop);
+    }
 }
 
 pub fn apply_movement(
@@ -52,6 +55,8 @@ pub fn apply_movement(
             block.y == grid.height - 1 || other.iter().any(|(other,)| collides_bottom(other, block))
         });
 
+        let mut down = 0;
+
         for movement in status.next_movements.drain() {
             match movement {
                 resources::Movement::Left => {
@@ -66,14 +71,18 @@ pub fn apply_movement(
                 }
                 resources::Movement::Down => {
                     if !piece.blocked_bottom {
-                        piece.y += 1
+                        down = down.max(1)
                     }
                 }
                 resources::Movement::Rotation => {
                     piece.rotation = (piece.rotation + 1) % 4;
                 }
+                resources::Movement::Drop => {
+                    down = piece.drop_height;
+                }
             }
         }
+        piece.y += down;
     }
 }
 
@@ -224,4 +233,29 @@ pub fn completed_line(
 
 pub fn update_speed(mut timer: ResMut<resources::SpeedTimer>, status: Res<resources::Status>) {
     timer.0.duration = (1.0 - status.level as f32 / 20.0).max(0.01)
+}
+
+pub fn compute_drop_height(
+    grid: Res<resources::Grid>,
+    mut piece: ResMut<resources::Piece>,
+    blocks: Query<With<Active, (&GridPos,)>>,
+    other: Query<Without<Active, (&GridPos,)>>,
+) {
+    piece.drop_height = (1..grid.height - 1)
+        .filter(|depth| {
+            blocks.iter().any(|(block,)| {
+                block.y + depth == grid.height - 1
+                    || other.iter().any(|(other,)| {
+                        collides_bottom(
+                            other,
+                            &GridPos {
+                                x: block.x,
+                                y: block.y + depth,
+                            },
+                        )
+                    })
+            })
+        })
+        .next()
+        .unwrap_or(0)
 }

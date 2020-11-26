@@ -49,6 +49,7 @@ pub enum Movement {
     Right,
     Rotation,
     Down,
+    Drop,
 }
 
 pub struct Status {
@@ -65,4 +66,5 @@ pub struct Piece {
     pub y: isize,
     pub piece: crate::constants::Tetromino,
     pub blocked_bottom: bool,
+    pub drop_height: isize,
 }

@@ -81,6 +81,7 @@ impl Plugin for InitPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system(setup.system())
             .add_system(systems::read_input.system())
+            .add_system(systems::compute_drop_height.system())
             .add_system(systems::drop.system())
             .add_system(systems::bloc_global_position.system())
             .add_system(systems::apply_movement.system())
@@ -117,6 +118,7 @@ fn main() {
             y: 0,
             piece: constants::rand_tetromino(),
             blocked_bottom: false,
+            drop_height: 0,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))
