@@ -26,7 +26,6 @@ fn setup(
             sprite: Sprite::new(Vec2::new(wall_thickness, grid.height() + wall_thickness)),
             ..Default::default()
         })
-        .with(components::Collider)
         // right
         .spawn(SpriteComponents {
             material: wall_material.clone(),
@@ -38,7 +37,6 @@ fn setup(
             sprite: Sprite::new(Vec2::new(wall_thickness, grid.height() + wall_thickness)),
             ..Default::default()
         })
-        .with(components::Collider)
         // bottom
         .spawn(SpriteComponents {
             material: wall_material.clone(),
@@ -53,8 +51,6 @@ fn setup(
             )),
             ..Default::default()
         })
-        .with(components::Collider);
-    commands
         .spawn(Camera2dComponents::default())
         .spawn(UiCameraComponents::default())
         .spawn(TextComponents {

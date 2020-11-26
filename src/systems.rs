@@ -97,14 +97,14 @@ pub fn test_collisions(
     grid: Res<resources::Grid>,
     mut piece: ResMut<resources::Piece>,
     bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
-    other: Query<Without<Active, (&Collider, &GridPos)>>,
+    other: Query<Without<Active, (&GridPos,)>>,
 ) {
     for (_bloc, grid_pos) in bloc.iter() {
         piece.blocked_left = piece.blocked_left || grid_pos.x == 0;
         piece.blocked_right = piece.blocked_right || grid_pos.x == grid.width - 1;
         piece.blocked_bottom = piece.blocked_bottom || grid_pos.y == grid.height - 1;
 
-        for (_other, other_grid_pos) in other.iter() {
+        for (other_grid_pos,) in other.iter() {
             piece.blocked_left = piece.blocked_left || collides_left(other_grid_pos, grid_pos);
             piece.blocked_right = piece.blocked_right || collides_right(other_grid_pos, grid_pos);
             piece.blocked_bottom =
@@ -143,8 +143,7 @@ pub fn spawn_new_piece(
                 })
                 .with(BlocPosition(idx))
                 .with(grid_pos)
-                .with(Active)
-                .with(Collider);
+                .with(Active);
         }
     }
 }

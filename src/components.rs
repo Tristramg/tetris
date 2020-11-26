@@ -1,8 +1,6 @@
 pub struct BlocPosition(pub usize);
 pub struct Active;
 
-pub struct Collider;
-
 #[derive(Debug)]
 pub struct Blocked {
     pub left: bool,
