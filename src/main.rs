@@ -89,7 +89,8 @@ impl Plugin for InitPlugin {
             .add_system(systems::remove_piece.system())
             .add_system(systems::spawn_new_piece.system())
             .add_system(systems::movement_to_pixels.system())
-            .add_system(systems::scoreboard.system());
+            .add_system(systems::scoreboard.system())
+            .add_system(systems::update_speed.system());
     }
 }
 

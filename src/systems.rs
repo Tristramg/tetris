@@ -221,3 +221,7 @@ pub fn completed_line(
         }
     }
 }
+
+pub fn update_speed(mut timer: ResMut<resources::SpeedTimer>, status: Res<resources::Status>) {
+    timer.0.duration = (1.0 - status.level as f32 / 20.0).max(0.01)
+}
