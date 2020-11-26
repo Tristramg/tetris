@@ -92,25 +92,24 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
     a.x == b.x && a.y == b.y + 1
 }
 
-// This is ugly.
 pub fn test_collisions(
     grid: Res<resources::Grid>,
     mut piece: ResMut<resources::Piece>,
-    bloc: Query<With<Active, (&GridPos,)>>,
+    blocks: Query<With<Active, (&GridPos,)>>,
     other: Query<Without<Active, (&GridPos,)>>,
 ) {
-    for (grid_pos,) in bloc.iter() {
-        piece.blocked_left = piece.blocked_left || grid_pos.x == 0;
-        piece.blocked_right = piece.blocked_right || grid_pos.x == grid.width - 1;
-        piece.blocked_bottom = piece.blocked_bottom || grid_pos.y == grid.height - 1;
-
-        for (other_grid_pos,) in other.iter() {
-            piece.blocked_left = piece.blocked_left || collides_left(other_grid_pos, grid_pos);
-            piece.blocked_right = piece.blocked_right || collides_right(other_grid_pos, grid_pos);
-            piece.blocked_bottom =
-                piece.blocked_bottom || collides_bottom(other_grid_pos, grid_pos);
-        }
-    }
+    piece.blocked_left = piece.blocked_left
+        || blocks.iter().any(|(block,)| {
+            block.x == 0 || other.iter().any(|(other,)| collides_left(other, block))
+        });
+    piece.blocked_right = piece.blocked_right
+        || blocks.iter().any(|(block,)| {
+            block.x == grid.width - 1 || other.iter().any(|(other,)| collides_right(other, block))
+        });
+    piece.blocked_bottom = piece.blocked_bottom
+        || blocks.iter().any(|(block,)| {
+            block.y == grid.height - 1 || other.iter().any(|(other,)| collides_bottom(other, block))
+        });
 }
 
 pub fn spawn_new_piece(
