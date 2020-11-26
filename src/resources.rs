@@ -52,9 +52,6 @@ pub enum Movement {
 }
 
 pub struct Status {
-    pub blocked_left: bool,
-    pub blocked_right: bool,
-    pub blocked_bottom: bool,
     pub next_movements: std::collections::HashSet<Movement>,
     pub score: usize,
     pub game_over: bool,
@@ -67,4 +64,7 @@ pub struct Piece {
     pub x: isize,
     pub y: isize,
     pub piece: crate::constants::Tetromino,
+    pub blocked_left: bool,
+    pub blocked_right: bool,
+    pub blocked_bottom: bool,
 }

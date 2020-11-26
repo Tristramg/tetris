@@ -109,9 +109,6 @@ fn main() {
             ..Default::default()
         })
         .add_resource(resources::Status {
-            blocked_left: false,
-            blocked_right: false,
-            blocked_bottom: false,
             next_movements: std::collections::HashSet::new(),
             score: 0,
             game_over: false,
@@ -123,6 +120,9 @@ fn main() {
             x: 4,
             y: 0,
             piece: constants::rand_tetromino(),
+            blocked_left: false,
+            blocked_right: false,
+            blocked_bottom: false,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))

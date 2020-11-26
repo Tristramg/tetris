@@ -15,14 +15,17 @@ pub fn drop(
     }
 }
 
+// TODO : move the blockage test to apply movement
+// Because is does not depend on any component as the collision detection
+// they run in parallel > race condition
 pub fn read_input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<KeyCode>>) {
-    if keyboard_input.pressed(KeyCode::Left) && !status.blocked_left {
+    if keyboard_input.pressed(KeyCode::Left) {
         status.next_movements.insert(resources::Movement::Left);
     }
-    if keyboard_input.pressed(KeyCode::Right) && !status.blocked_right {
+    if keyboard_input.pressed(KeyCode::Right) {
         status.next_movements.insert(resources::Movement::Right);
     }
-    if keyboard_input.pressed(KeyCode::Down) && !status.blocked_bottom {
+    if keyboard_input.pressed(KeyCode::Down) {
         status.next_movements.insert(resources::Movement::Down);
     }
     if keyboard_input.just_pressed(KeyCode::Up) {
@@ -41,18 +44,30 @@ pub fn apply_movement(
     if timer.0.finished {
         for movement in status.next_movements.drain() {
             match movement {
-                resources::Movement::Left => piece.x -= 1,
-                resources::Movement::Right => piece.x += 1,
-                resources::Movement::Down => piece.y += 1,
+                resources::Movement::Left => {
+                    if !piece.blocked_left {
+                        piece.x -= 1
+                    }
+                }
+                resources::Movement::Right => {
+                    if !piece.blocked_right {
+                        piece.x += 1
+                    }
+                }
+                resources::Movement::Down => {
+                    if !piece.blocked_bottom {
+                        piece.y += 1
+                    }
+                }
                 resources::Movement::Rotation => {
                     piece.rotation = (piece.rotation + 1) % 4;
                 }
             }
         }
 
-        status.blocked_left = false;
-        status.blocked_right = false;
-        status.blocked_bottom = false;
+        piece.blocked_left = false;
+        piece.blocked_right = false;
+        piece.blocked_bottom = false;
     }
 }
 
@@ -77,29 +92,30 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
     a.x == b.x && a.y == b.y + 1
 }
 
+// This is ugly.
 pub fn test_collisions(
     grid: Res<resources::Grid>,
-    mut status: ResMut<resources::Status>,
+    mut piece: ResMut<resources::Piece>,
     bloc: Query<With<Active, (&BlocPosition, &GridPos)>>,
     other: Query<Without<Active, (&Collider, &GridPos)>>,
 ) {
     for (_bloc, grid_pos) in bloc.iter() {
-        status.blocked_left = status.blocked_left || grid_pos.x == 0;
-        status.blocked_right = status.blocked_right || grid_pos.x == grid.width - 1;
-        status.blocked_bottom = status.blocked_bottom || grid_pos.y == grid.height - 1;
+        piece.blocked_left = piece.blocked_left || grid_pos.x == 0;
+        piece.blocked_right = piece.blocked_right || grid_pos.x == grid.width - 1;
+        piece.blocked_bottom = piece.blocked_bottom || grid_pos.y == grid.height - 1;
 
         for (_other, other_grid_pos) in other.iter() {
-            status.blocked_left = status.blocked_left || collides_left(other_grid_pos, grid_pos);
-            status.blocked_right = status.blocked_right || collides_right(other_grid_pos, grid_pos);
-            status.blocked_bottom =
-                status.blocked_bottom || collides_bottom(other_grid_pos, grid_pos);
+            piece.blocked_left = piece.blocked_left || collides_left(other_grid_pos, grid_pos);
+            piece.blocked_right = piece.blocked_right || collides_right(other_grid_pos, grid_pos);
+            piece.blocked_bottom =
+                piece.blocked_bottom || collides_bottom(other_grid_pos, grid_pos);
         }
     }
 }
 
 pub fn spawn_new_piece(
     mut commands: Commands,
-    mut status: ResMut<resources::Status>,
+    status: ResMut<resources::Status>,
     mut piece: ResMut<resources::Piece>,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -110,7 +126,7 @@ pub fn spawn_new_piece(
         piece.y = 0;
         piece.piece = constants::rand_tetromino();
         piece.rotation = 0;
-        status.blocked_bottom = false;
+        piece.blocked_bottom = false;
         for (idx, pos) in piece.piece.orientations[0].0.iter().enumerate() {
             let grid_pos = GridPos {
                 x: piece.x + pos.0,
@@ -167,10 +183,10 @@ pub fn scoreboard(status: Res<resources::Status>, mut query: Query<&mut Text>) {
 
 pub fn remove_piece(
     mut commands: Commands,
-    status: Res<resources::Status>,
+    piece: Res<resources::Piece>,
     pieces: Query<With<Active, (Entity,)>>,
 ) {
-    if status.blocked_bottom {
+    if piece.blocked_bottom {
         for (entity,) in pieces.iter() {
             commands.remove_one::<Active>(entity);
         }
@@ -192,9 +208,10 @@ pub fn completed_line(
     mut commands: Commands,
     grid: Res<resources::Grid>,
     mut status: ResMut<resources::Status>,
+    piece: ResMut<resources::Piece>,
     mut blocks: Query<With<BlocPosition, (Entity, &mut GridPos)>>,
 ) {
-    if status.blocked_bottom {
+    if piece.blocked_bottom {
         let counts = blocks
             .iter_mut()
             .map(|(_, grid_pos)| grid_pos.y)
