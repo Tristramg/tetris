@@ -64,7 +64,5 @@ pub struct Piece {
     pub x: isize,
     pub y: isize,
     pub piece: crate::constants::Tetromino,
-    pub blocked_left: bool,
-    pub blocked_right: bool,
     pub blocked_bottom: bool,
 }

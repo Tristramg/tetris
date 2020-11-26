@@ -35,22 +35,35 @@ pub fn read_input(mut status: ResMut<resources::Status>, keyboard_input: Res<Inp
 
 pub fn apply_movement(
     time: Res<Time>,
+    grid: Res<resources::Grid>,
     mut status: ResMut<resources::Status>,
     mut piece: ResMut<resources::Piece>,
     mut timer: ResMut<resources::ControlTimer>,
+    blocks: Query<With<Active, (&GridPos,)>>,
+    other: Query<Without<Active, (&GridPos,)>>,
 ) {
     timer.0.tick(time.delta_seconds);
 
     if timer.0.finished {
+        let blocked_left = blocks.iter().any(|(block,)| {
+            block.x == 0 || other.iter().any(|(other,)| collides_left(other, block))
+        });
+        let blocked_right = blocks.iter().any(|(block,)| {
+            block.x == grid.width - 1 || other.iter().any(|(other,)| collides_right(other, block))
+        });
+        piece.blocked_bottom = blocks.iter().any(|(block,)| {
+            block.y == grid.height - 1 || other.iter().any(|(other,)| collides_bottom(other, block))
+        });
+
         for movement in status.next_movements.drain() {
             match movement {
                 resources::Movement::Left => {
-                    if !piece.blocked_left {
+                    if !blocked_left {
                         piece.x -= 1
                     }
                 }
                 resources::Movement::Right => {
-                    if !piece.blocked_right {
+                    if !blocked_right {
                         piece.x += 1
                     }
                 }
@@ -64,10 +77,6 @@ pub fn apply_movement(
                 }
             }
         }
-
-        piece.blocked_left = false;
-        piece.blocked_right = false;
-        piece.blocked_bottom = false;
     }
 }
 
@@ -90,26 +99,6 @@ fn collides_right(a: &GridPos, b: &GridPos) -> bool {
 
 fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
     a.x == b.x && a.y == b.y + 1
-}
-
-pub fn test_collisions(
-    grid: Res<resources::Grid>,
-    mut piece: ResMut<resources::Piece>,
-    blocks: Query<With<Active, (&GridPos,)>>,
-    other: Query<Without<Active, (&GridPos,)>>,
-) {
-    piece.blocked_left = piece.blocked_left
-        || blocks.iter().any(|(block,)| {
-            block.x == 0 || other.iter().any(|(other,)| collides_left(other, block))
-        });
-    piece.blocked_right = piece.blocked_right
-        || blocks.iter().any(|(block,)| {
-            block.x == grid.width - 1 || other.iter().any(|(other,)| collides_right(other, block))
-        });
-    piece.blocked_bottom = piece.blocked_bottom
-        || blocks.iter().any(|(block,)| {
-            block.y == grid.height - 1 || other.iter().any(|(other,)| collides_bottom(other, block))
-        });
 }
 
 pub fn spawn_new_piece(

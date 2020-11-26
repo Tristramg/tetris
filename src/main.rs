@@ -80,7 +80,6 @@ pub struct InitPlugin;
 impl Plugin for InitPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system(setup.system())
-            .add_system(systems::test_collisions.system())
             .add_system(systems::read_input.system())
             .add_system(systems::drop.system())
             .add_system(systems::bloc_global_position.system())
@@ -116,8 +115,6 @@ fn main() {
             x: 4,
             y: 0,
             piece: constants::rand_tetromino(),
-            blocked_left: false,
-            blocked_right: false,
             blocked_bottom: false,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
