@@ -109,13 +109,14 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
 
 pub fn spawn_new_piece(
     mut commands: Commands,
-    status: ResMut<resources::Status>,
+    mut status: ResMut<resources::Status>,
     mut piece: ResMut<resources::Piece>,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     active: Query<(&Active,)>,
 ) {
     if active.iter().next().is_none() && !status.game_over {
+        status.next_movements.clear();
         piece.x = 4;
         piece.y = 0;
         piece.piece = constants::rand_tetromino();
@@ -126,6 +127,19 @@ pub fn spawn_new_piece(
                 x: piece.x + pos.0,
                 y: piece.y + pos.1,
             };
+            let mut shadow_color = piece.piece.color.clone();
+            shadow_color.set_a(0.5);
+            commands
+                .spawn(SpriteComponents {
+                    material: materials.add(shadow_color.into()),
+                    sprite: Sprite::new(Vec2::new(grid.unit - 1.0, grid.unit - 1.0)),
+                    transform: Transform::from_translation(
+                        grid.as_translation(piece.x + pos.0, piece.y + pos.1),
+                    ),
+                    ..Default::default()
+                })
+                .with(BlocPosition(idx))
+                .with(Shadow);
             commands
                 .spawn(SpriteComponents {
                     material: materials.add(piece.piece.color.into()),
@@ -241,7 +255,7 @@ pub fn compute_drop_height(
     blocks: Query<With<Active, (&GridPos,)>>,
     other: Query<Without<Active, (&GridPos,)>>,
 ) {
-    piece.drop_height = (1..grid.height - 1)
+    piece.drop_height = (0..grid.height - 1)
         .filter(|depth| {
             blocks.iter().any(|(block,)| {
                 block.y + depth == grid.height - 1
@@ -258,4 +272,17 @@ pub fn compute_drop_height(
         })
         .next()
         .unwrap_or(0)
+}
+
+pub fn move_shadow(
+    grid: Res<resources::Grid>,
+    piece: Res<resources::Piece>,
+    blocks: Query<With<Active, (&GridPos, &BlocPosition)>>,
+    mut shadows: Query<With<Shadow, (&mut Transform, &BlocPosition)>>,
+) {
+    for (grid_pos, pos) in blocks.iter() {
+        for (mut shadow, _) in shadows.iter_mut().filter(|(_, s_pos)| pos.0 == s_pos.0) {
+            shadow.translation = grid.as_translation(grid_pos.x, grid_pos.y + piece.drop_height);
+        }
+    }
 }

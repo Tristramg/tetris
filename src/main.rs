@@ -82,6 +82,7 @@ impl Plugin for InitPlugin {
         app.add_startup_system(setup.system())
             .add_system(systems::read_input.system())
             .add_system(systems::compute_drop_height.system())
+            .add_system(systems::move_shadow.system())
             .add_system(systems::drop.system())
             .add_system(systems::bloc_global_position.system())
             .add_system(systems::apply_movement.system())
