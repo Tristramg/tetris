@@ -15,9 +15,6 @@ pub fn drop(
     }
 }
 
-// TODO : move the blockage test to apply movement
-// Because is does not depend on any component as the collision detection
-// they run in parallel > race condition
 pub fn read_input(mut status: ResMut<resources::Status>, keyboard_input: Res<Input<KeyCode>>) {
     if keyboard_input.pressed(KeyCode::Left) {
         status.next_movements.insert(resources::Movement::Left);
