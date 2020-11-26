@@ -202,7 +202,7 @@ pub fn completed_line(
     grid: Res<resources::Grid>,
     mut status: ResMut<resources::Status>,
     piece: ResMut<resources::Piece>,
-    mut blocks: Query<With<BlocPosition, (Entity, &mut GridPos)>>,
+    mut blocks: Query<(Entity, &mut GridPos)>,
 ) {
     if piece.blocked_bottom {
         let counts = blocks
