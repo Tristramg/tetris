@@ -52,10 +52,18 @@ pub enum Movement {
     Drop,
 }
 
+#[derive(PartialEq)]
+pub enum PieceStatus {
+    Droping,
+    JustTouchedBottom(usize),
+    WaitingSpawn,
+    JustDropped,
+    GameOver,
+}
+
 pub struct Status {
     pub next_movements: std::collections::HashSet<Movement>,
     pub score: usize,
-    pub game_over: bool,
     pub level: usize,
     pub lines: usize,
 }
@@ -65,6 +73,6 @@ pub struct Piece {
     pub x: isize,
     pub y: isize,
     pub piece: crate::constants::Tetromino,
-    pub blocked_bottom: bool,
     pub drop_height: isize,
+    pub status: PieceStatus,
 }

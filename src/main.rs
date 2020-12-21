@@ -109,7 +109,6 @@ fn main() {
         .add_resource(resources::Status {
             next_movements: std::collections::HashSet::new(),
             score: 0,
-            game_over: false,
             level: 1,
             lines: 0,
         })
@@ -118,8 +117,8 @@ fn main() {
             x: 4,
             y: 0,
             piece: constants::rand_tetromino(),
-            blocked_bottom: false,
             drop_height: 0,
+            status: resources::PieceStatus::WaitingSpawn,
         })
         .add_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_resource(resources::ControlTimer(Timer::from_seconds(0.20, true)))

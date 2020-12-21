@@ -51,9 +51,18 @@ pub fn apply_movement(
         let blocked_right = blocks.iter().any(|(block,)| {
             block.x == grid.width - 1 || other.iter().any(|(other,)| collides_right(other, block))
         });
-        piece.blocked_bottom = blocks.iter().any(|(block,)| {
+        let blocked_bottom = blocks.iter().any(|(block,)| {
             block.y == grid.height - 1 || other.iter().any(|(other,)| collides_bottom(other, block))
         });
+
+        if blocked_bottom {
+            use resources::PieceStatus;
+            piece.status = match piece.status {
+                PieceStatus::Droping => PieceStatus::JustTouchedBottom(0),
+                PieceStatus::JustTouchedBottom(0) => PieceStatus::JustTouchedBottom(1),
+                _ => PieceStatus::WaitingSpawn,
+            }
+        }
 
         let mut down = 0;
 
@@ -70,7 +79,7 @@ pub fn apply_movement(
                     }
                 }
                 resources::Movement::Down => {
-                    if !piece.blocked_bottom {
+                    if !blocked_bottom {
                         down = down.max(1)
                     }
                 }
@@ -79,6 +88,7 @@ pub fn apply_movement(
                 }
                 resources::Movement::Drop => {
                     down = piece.drop_height;
+                    piece.status = resources::PieceStatus::JustDropped;
                 }
             }
         }
@@ -113,15 +123,14 @@ pub fn spawn_new_piece(
     mut piece: ResMut<resources::Piece>,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    active: Query<(&Active,)>,
 ) {
-    if active.iter().next().is_none() && !status.game_over {
+    if piece.status == resources::PieceStatus::WaitingSpawn {
+        piece.status = resources::PieceStatus::Droping;
         status.next_movements.clear();
         piece.x = 4;
         piece.y = 0;
         piece.piece = constants::rand_tetromino();
         piece.rotation = 0;
-        piece.blocked_bottom = false;
         for (idx, pos) in piece.piece.orientations[0].0.iter().enumerate() {
             let grid_pos = GridPos {
                 x: piece.x + pos.0,
@@ -167,23 +176,28 @@ pub fn bloc_global_position(
     }
 }
 
-pub fn game_over(
-    mut status: ResMut<resources::Status>,
-    query: Query<Without<Active, (&GridPos,)>>,
-) {
+pub fn game_over(mut piece: ResMut<resources::Piece>, query: Query<Without<Active, (&GridPos,)>>) {
     if query.iter().any(|(grid_pos,)| grid_pos.y <= 0) {
-        status.game_over = true;
+        piece.status = resources::PieceStatus::GameOver;
     }
 }
 
-pub fn scoreboard(status: Res<resources::Status>, mut query: Query<&mut Text>) {
+pub fn scoreboard(
+    status: Res<resources::Status>,
+    piece: Res<resources::Piece>,
+    mut query: Query<&mut Text>,
+) {
     for mut text in query.iter_mut() {
         text.value = format!(
             "Score: {}\nLevel: {}\nLines: {}{}",
             status.score,
             status.level,
             status.lines,
-            if status.game_over { "\n Game Over" } else { "" }
+            if piece.status == resources::PieceStatus::GameOver {
+                "\nGame Over"
+            } else {
+                ""
+            }
         );
     }
 }
@@ -193,7 +207,7 @@ pub fn remove_piece(
     piece: Res<resources::Piece>,
     pieces: Query<With<Active, (Entity,)>>,
 ) {
-    if piece.blocked_bottom {
+    if piece.status == resources::PieceStatus::WaitingSpawn {
         for (entity,) in pieces.iter() {
             commands.remove_one::<Active>(entity);
         }
@@ -214,11 +228,11 @@ fn score(lines: usize, level: usize) -> usize {
 pub fn completed_line(
     mut commands: Commands,
     grid: Res<resources::Grid>,
+    piece: Res<resources::Piece>,
     mut status: ResMut<resources::Status>,
-    piece: ResMut<resources::Piece>,
     mut blocks: Query<(Entity, &mut GridPos)>,
 ) {
-    if piece.blocked_bottom {
+    if piece.status == resources::PieceStatus::WaitingSpawn {
         let counts = blocks
             .iter_mut()
             .map(|(_, grid_pos)| grid_pos.y)
