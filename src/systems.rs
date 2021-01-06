@@ -8,9 +8,7 @@ pub fn drop(
     mut timer: ResMut<resources::SpeedTimer>,
     mut status: ResMut<resources::Status>,
 ) {
-    timer.0.tick(time.delta_seconds);
-
-    if timer.0.finished {
+    if timer.0.tick(time.delta_seconds()).just_finished() {
         status.next_movements.insert(resources::Movement::Down);
     }
 }
@@ -39,12 +37,10 @@ pub fn apply_movement(
     mut status: ResMut<resources::Status>,
     mut piece: ResMut<resources::Piece>,
     mut timer: ResMut<resources::ControlTimer>,
-    blocks: Query<With<Active, (&GridPos,)>>,
-    other: Query<Without<Active, (&GridPos,)>>,
+    blocks: Query<(&GridPos,), (With<Active>,)>,
+    other: Query<(&GridPos,), (Without<Active>,)>,
 ) {
-    timer.0.tick(time.delta_seconds);
-
-    if timer.0.finished {
+    if timer.0.tick(time.delta_seconds()).just_finished() {
         let blocked_left = blocks.iter().any(|(block,)| {
             block.x == 0 || other.iter().any(|(other,)| collides_left(other, block))
         });
@@ -118,7 +114,7 @@ fn collides_bottom(a: &GridPos, b: &GridPos) -> bool {
 }
 
 pub fn spawn_new_piece(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut status: ResMut<resources::Status>,
     mut piece: ResMut<resources::Piece>,
     grid: Res<resources::Grid>,
@@ -139,7 +135,7 @@ pub fn spawn_new_piece(
             let mut shadow_color = piece.piece.color.clone();
             shadow_color.set_a(0.5);
             commands
-                .spawn(SpriteComponents {
+                .spawn(SpriteBundle {
                     material: materials.add(shadow_color.into()),
                     sprite: Sprite::new(Vec2::new(grid.unit - 1.0, grid.unit - 1.0)),
                     transform: Transform::from_translation(
@@ -150,7 +146,7 @@ pub fn spawn_new_piece(
                 .with(BlocPosition(idx))
                 .with(Shadow);
             commands
-                .spawn(SpriteComponents {
+                .spawn(SpriteBundle {
                     material: materials.add(piece.piece.color.into()),
                     sprite: Sprite::new(Vec2::new(grid.unit - 1.0, grid.unit - 1.0)),
                     transform: Transform::from_translation(
@@ -167,7 +163,7 @@ pub fn spawn_new_piece(
 
 pub fn bloc_global_position(
     piece: Res<resources::Piece>,
-    mut query: Query<With<Active, (&BlocPosition, &mut GridPos)>>,
+    mut query: Query<(&BlocPosition, &mut GridPos), (With<Active>,)>,
 ) {
     for (position, mut grid_pos) in query.iter_mut() {
         let pos = piece.piece.orientations[piece.rotation].0[position.0];
@@ -176,7 +172,10 @@ pub fn bloc_global_position(
     }
 }
 
-pub fn game_over(mut piece: ResMut<resources::Piece>, query: Query<Without<Active, (&GridPos,)>>) {
+pub fn game_over(
+    mut piece: ResMut<resources::Piece>,
+    query: Query<(&GridPos,), (Without<Active>,)>,
+) {
     if query.iter().any(|(grid_pos,)| grid_pos.y <= 0) {
         piece.status = resources::PieceStatus::GameOver;
     }
@@ -203,9 +202,9 @@ pub fn scoreboard(
 }
 
 pub fn remove_piece(
-    mut commands: Commands,
+    commands: &mut Commands,
     piece: Res<resources::Piece>,
-    pieces: Query<With<Active, (Entity,)>>,
+    pieces: Query<(Entity,), (With<Active>,)>,
 ) {
     if piece.status == resources::PieceStatus::WaitingSpawn {
         for (entity,) in pieces.iter() {
@@ -226,7 +225,7 @@ fn score(lines: usize, level: usize) -> usize {
 }
 
 pub fn completed_line(
-    mut commands: Commands,
+    commands: &mut Commands,
     grid: Res<resources::Grid>,
     piece: Res<resources::Piece>,
     mut status: ResMut<resources::Status>,
@@ -260,14 +259,16 @@ pub fn completed_line(
 }
 
 pub fn update_speed(mut timer: ResMut<resources::SpeedTimer>, status: Res<resources::Status>) {
-    timer.0.duration = (1.0 - status.level as f32 / 20.0).max(0.01)
+    timer
+        .0
+        .set_duration((1.0 - status.level as f32 / 20.0).max(0.01));
 }
 
 pub fn compute_drop_height(
     grid: Res<resources::Grid>,
     mut piece: ResMut<resources::Piece>,
-    blocks: Query<With<Active, (&GridPos,)>>,
-    other: Query<Without<Active, (&GridPos,)>>,
+    blocks: Query<(&GridPos,), (With<Active>,)>,
+    other: Query<(&GridPos,), (Without<Active>,)>,
 ) {
     piece.drop_height = (0..grid.height - 1)
         .filter(|depth| {
@@ -291,8 +292,8 @@ pub fn compute_drop_height(
 pub fn move_shadow(
     grid: Res<resources::Grid>,
     piece: Res<resources::Piece>,
-    blocks: Query<With<Active, (&GridPos, &BlocPosition)>>,
-    mut shadows: Query<With<Shadow, (&mut Transform, &BlocPosition)>>,
+    blocks: Query<(&GridPos, &BlocPosition), (With<Active>,)>,
+    mut shadows: Query<(&mut Transform, &BlocPosition), (With<Shadow>,)>,
 ) {
     for (grid_pos, pos) in blocks.iter() {
         for (mut shadow, _) in shadows.iter_mut().filter(|(_, s_pos)| pos.0 == s_pos.0) {

@@ -5,7 +5,7 @@ mod systems;
 use bevy::prelude::*;
 
 fn setup(
-    mut commands: Commands,
+    commands: &mut Commands,
     grid: Res<resources::Grid>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
@@ -16,7 +16,7 @@ fn setup(
 
     commands
         // left
-        .spawn(SpriteComponents {
+        .spawn(SpriteBundle {
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
                 grid.x_min() - wall_thickness * 0.5,
@@ -27,7 +27,7 @@ fn setup(
             ..Default::default()
         })
         // right
-        .spawn(SpriteComponents {
+        .spawn(SpriteBundle {
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
                 grid.x_max() + wall_thickness * 0.5,
@@ -38,7 +38,7 @@ fn setup(
             ..Default::default()
         })
         // bottom
-        .spawn(SpriteComponents {
+        .spawn(SpriteBundle {
             material: wall_material.clone(),
             transform: Transform::from_translation(Vec3::new(
                 0.0,
@@ -51,15 +51,16 @@ fn setup(
             )),
             ..Default::default()
         })
-        .spawn(Camera2dComponents::default())
-        .spawn(UiCameraComponents::default())
-        .spawn(TextComponents {
+        .spawn(Camera2dBundle::default())
+        .spawn(CameraUiBundle::default())
+        .spawn(TextBundle {
             text: Text {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                 value: "Score:".to_string(),
                 style: TextStyle {
                     color: Color::rgb(0.5, 0.5, 1.0),
-                    font_size: 40.0,
+                    font_size: 20.0,
+                    ..Default::default()
                 },
             },
             style: Style {
@@ -100,8 +101,8 @@ fn main() {
     App::build()
         .add_resource(WindowDescriptor {
             title: "Tetris!".to_string(),
-            width: 800,
-            height: 1200,
+            width: 400.0,
+            height: 600.0,
             vsync: true,
             resizable: false,
             ..Default::default()
@@ -126,7 +127,7 @@ fn main() {
         .add_resource(resources::Grid {
             height: 20,
             width: 10,
-            unit: 50.0,
+            unit: 25.0,
         })
         .add_plugins(DefaultPlugins)
         .add_plugin(InitPlugin)
